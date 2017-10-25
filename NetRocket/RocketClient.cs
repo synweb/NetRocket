@@ -28,7 +28,6 @@ namespace NetRocket
         {
             switch (connectionState)
             {
-                case ConnectionState.Dropped:
                 case ConnectionState.NotConnected:
                     if (_autoReconnect)
                     {

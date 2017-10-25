@@ -203,8 +203,11 @@ namespace NetRocket
 
         protected virtual void CloseConnection(RocketConnection conn)
         {
-            conn.Socket.Shutdown(SocketShutdown.Both);
-            conn.ConnectionState = NetRocket.Connections.ConnectionState.NotConnected;
+            if (conn.Socket.Connected)
+            {
+                conn.Socket.Shutdown(SocketShutdown.Both);
+            }
+            conn.ConnectionState = NetRocket.Connections.ConnectionState.Dropped;
         }
 
         #region InboundMethods

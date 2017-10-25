@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <Authors>Sergey Semenov</Authors>
     <Company>SynWeb</Company>
     <Product>Seed122</Product>
@@ -12,10 +12,10 @@
     <PackageIconUrl>https://ru.gravatar.com/userimage/129871590/ada7f995977d39d9bf129ed4a6c23060.png</PackageIconUrl>
     <RepositoryUrl>https://github.com/synweb/NetRocket</RepositoryUrl>
     <PackageTags>socket network two-way communication protocol json</PackageTags>
-    <AssemblyVersion>0.1.0.0</AssemblyVersion>
-    <FileVersion>0.1.0.0</FileVersion>
+    <AssemblyVersion>0.1.1.0</AssemblyVersion>
+    <FileVersion>0.1.1.0</FileVersion>
     <Copyright>Copyright ©2017 Studio SynWeb</Copyright>
-    <PackageReleaseNotes>The very first version</PackageReleaseNotes>
+    <PackageReleaseNotes>Fixed issues with connection drops</PackageReleaseNotes>
     <Description>Two-way web communication protocol based on sockets for real-time apps</Description>
     <PackageId>SynWeb.NetRocket</PackageId>
   </PropertyGroup>
