@@ -5,7 +5,7 @@ VisualStudioVersion = 15.0.27004.2005
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetRocket", "NetRocket\NetRocket.csproj", "{5E7298E2-8FC9-4436-A956-B2EAD6A5D9AE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetRocket.Tests", "..\NetRocket.Tests\NetRocket.Tests.csproj", "{AE33DB43-5794-4F1C-AF93-FFB7FB92BA5A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NetRocket.Tests", "NetRocket.Tests\NetRocket.Tests.csproj", "{43BCFB13-BB9F-4368-A30B-BFEE4EBC1B3D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,10 +17,10 @@ Global
 		{5E7298E2-8FC9-4436-A956-B2EAD6A5D9AE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5E7298E2-8FC9-4436-A956-B2EAD6A5D9AE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5E7298E2-8FC9-4436-A956-B2EAD6A5D9AE}.Release|Any CPU.Build.0 = Release|Any CPU
-		{AE33DB43-5794-4F1C-AF93-FFB7FB92BA5A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{AE33DB43-5794-4F1C-AF93-FFB7FB92BA5A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{AE33DB43-5794-4F1C-AF93-FFB7FB92BA5A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{AE33DB43-5794-4F1C-AF93-FFB7FB92BA5A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{43BCFB13-BB9F-4368-A30B-BFEE4EBC1B3D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{43BCFB13-BB9F-4368-A30B-BFEE4EBC1B3D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{43BCFB13-BB9F-4368-A30B-BFEE4EBC1B3D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{43BCFB13-BB9F-4368-A30B-BFEE4EBC1B3D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
