@@ -16,7 +16,6 @@ using NetRocket.Exceptions;
 using NetRocket.Frames;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using ConnectionState = System.Data.ConnectionState;
 
 namespace NetRocket
 {
