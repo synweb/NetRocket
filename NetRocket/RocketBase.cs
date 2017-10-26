@@ -10,8 +10,8 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Force.Crc32;
 using NetRocket.Connections;
+using NetRocket.Cryptography;
 using NetRocket.Exceptions;
 using NetRocket.Frames;
 using Newtonsoft.Json;
@@ -19,9 +19,9 @@ using Newtonsoft.Json.Linq;
 
 namespace NetRocket
 {
-    public abstract partial class RocketBase: IDisposable
+    public abstract class RocketBase: IDisposable
     {
-        protected readonly HashAlgorithm _crc32 = new  Crc32Algorithm();
+        protected readonly HashAlgorithm _crc32 = new CRC32();
 
         public delegate void DataReceivedHandler(byte[] data, RocketConnection rocketConnection);
 
@@ -181,6 +181,10 @@ namespace NetRocket
                                     Task.Run(async () => await ProcessRequest(data, conn, isAuthorized: false));
                                 }
                             });
+                        }
+                        else
+                        {
+                            throw new InvalidFrameChecksumException();
                         }
                     }
 
@@ -567,11 +571,11 @@ namespace NetRocket
             int counter = 0;
             while (_frameResposesAwaitingDictionary[request.Guid] == null)
             {
-                //if (counter > maxCounter)
-                //{
-                //    _frameResposesAwaitingDictionary.Remove(request.Guid);
-                //    throw new RequestTimeoutException(request.Guid);
-                //}
+                if (counter > maxCounter)
+                {
+                    _frameResposesAwaitingDictionary.Remove(request.Guid);
+                    throw new RequestTimeoutException(request.Guid);
+                }
                 int delay = 2;
                 await Task.Delay(delay);
                 counter += delay;

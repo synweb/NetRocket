@@ -18,8 +18,7 @@ namespace NetRocket.Tests
             new object[] {new Credentials("Pasha", "100500"), new Credentials("Petya", "100500"), false},
         };
 
-        [Theory]
-        [MemberData(nameof(CredentialsEqualityTestsData))]
+        [Theory, MemberData(nameof(CredentialsEqualityTestsData))]
         public void CredentialsEqualityTests(Credentials cred1, Credentials cred2, bool expectedEqual)
         {
             Assert.Equal(cred1.Equals(cred2), expectedEqual);

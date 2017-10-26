@@ -53,7 +53,6 @@ namespace NetRocket
         {
             try
             {
-                _socket.ExclusiveAddressUse = false;
                 _socket.Bind(_ipEndPoint);
                 _socket.Listen(_maxPendingConnections);
                 Debug.WriteLine($"Listening on {Port} started");

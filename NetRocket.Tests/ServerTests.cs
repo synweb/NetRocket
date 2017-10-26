@@ -6,12 +6,13 @@ namespace NetRocket.Tests
     public class ServerTests
     {
         private readonly string _serverIp = "127.0.0.1";
-        private readonly int _serverPort = Utils.GetFreePort();
+        
 
         [Fact]
         public async void StartListeningTest()
         {
-            using (var server = new RocketServer(_serverIp, _serverPort))
+            int serverPort = Utils.GetFreePort();
+            using (var server = new RocketServer(_serverIp, serverPort))
             {
                 Assert.False(server.IsListening);
                 await server.Start();
@@ -22,7 +23,8 @@ namespace NetRocket.Tests
         [Fact]
         public async void RegisterCredentialsTest()
         {
-            using (var server = new RocketServer(_serverIp, _serverPort))
+            int serverPort = Utils.GetFreePort();
+            using (var server = new RocketServer(_serverIp, serverPort))
             {
                 Assert.Equal(server.CredentialsRegistered, 0);
                 server.RegisterCredentials(new Credentials("Pasha", "100500"));
@@ -37,7 +39,8 @@ namespace NetRocket.Tests
         [Fact]
         public async void UnregisterLoginTest()
         {
-            using (var server = new RocketServer(_serverIp, _serverPort))
+            int serverPort = Utils.GetFreePort();
+            using (var server = new RocketServer(_serverIp, serverPort))
             {
                 Assert.Equal(server.CredentialsRegistered, 0);
                 server.RegisterCredentials(new Credentials("Pasha", "100500"));
@@ -50,7 +53,8 @@ namespace NetRocket.Tests
         [Fact]
         public async void UnregisterCredentialsTest()
         {
-            using (var server = new RocketServer(_serverIp, _serverPort))
+            int serverPort = Utils.GetFreePort();
+            using (var server = new RocketServer(_serverIp, serverPort))
             {
                 Assert.Equal(server.CredentialsRegistered, 0);
                 var credentials = new Credentials("Pasha", "100500");

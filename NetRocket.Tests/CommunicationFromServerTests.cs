@@ -10,16 +10,13 @@ namespace NetRocket.Tests
 {
     public class CommunicationFromServerTests
     {
-        private readonly string _serverIp = "127.0.0.1";
-        private readonly int _serverPort = Utils.GetFreePort();
-
         [Fact]
         public async void InexistMethodCallTest()
         {
             await Assert.ThrowsAsync<MethodDoesNotExistException>(async () =>
             {
                 RocketConnection clientRocketConnectionOnServer = null;
-                using (var server = new RocketServer(_serverIp, _serverPort))
+                using (var server = Utils.CreateServer())
                 {
                     const string clientLogin = "client";
                     const string clientKey = "key";
@@ -27,7 +24,7 @@ namespace NetRocket.Tests
                     const string networkMethodName = "inexistMethod";
                     server.Authorized += (login, connection) => { clientRocketConnectionOnServer = connection; };
                     await server.Start();
-                    using (var client = new RocketClient(_serverIp, _serverPort, clientLogin, clientKey))
+                    using (var client = new RocketClient(server.Host, server.Port, clientLogin, clientKey))
                     {
                         await client.Connect();
                         await server.CallClientMethod(networkMethodName, null, clientRocketConnectionOnServer);
@@ -42,7 +39,7 @@ namespace NetRocket.Tests
             await Assert.ThrowsAsync<UnauthorizedException>(async () =>
             {
                 RocketConnection clientRocketConnectionOnServer = null;
-                using (var server = new RocketServer(_serverIp, _serverPort))
+                using (var server = Utils.CreateServer())
                 {
                     const string clientLogin = "client";
                     const string clientKey = "key";
@@ -51,7 +48,7 @@ namespace NetRocket.Tests
                     server.RegisterMethod(networkMethodName, () => {});
                     server.Authorized += (login, connection) => { clientRocketConnectionOnServer = connection; };
                     await server.Start();
-                    using (var client = new RocketClient(_serverIp, _serverPort, clientLogin, clientKey + "96513251684561"))
+                    using (var client = new RocketClient(server.Host, server.Port, clientLogin, clientKey + "96513251684561"))
                     {
                         await client.Connect();
                         await server.CallClientMethod(networkMethodName, null, clientRocketConnectionOnServer);
@@ -68,7 +65,7 @@ namespace NetRocket.Tests
             int? receivedInt = null;
             RocketConnection clientRocketConnectionOnServer = null;
 
-            using (var server = new RocketServer(_serverIp, _serverPort))
+            using (var server = Utils.CreateServer())
             {
                 const string clientLogin = "client";
                 const string clientKey = "key";
@@ -76,7 +73,7 @@ namespace NetRocket.Tests
                 const string networkMethodName = "writeInt";
                 server.Authorized += (login, connection) => { clientRocketConnectionOnServer = connection; };
                 await server.Start();
-                using (var client = new RocketClient(_serverIp, _serverPort, clientLogin, clientKey))
+                using (var client = new RocketClient(server.Host, server.Port, clientLogin, clientKey))
                 {
                     client.RegisterMethod<int>(networkMethodName, (x) => { receivedInt = x; });
                     await client.Connect();
@@ -100,14 +97,15 @@ namespace NetRocket.Tests
         [Fact]
         public async void ParameterizedMethodCallWithResultTest()
         {
+            int serverPort = Utils.GetFreePort();
             RocketConnection clientRocketConnectionOnServer = null;
-            using (var server = new RocketServer(_serverIp, _serverPort))
+            using (var server = Utils.CreateServer())
             {
                 server.RegisterCredentials(new Credentials("client", "key"));
                 const string networkMethodName = "compare";
                 server.Authorized += (login, connection) => { clientRocketConnectionOnServer = connection; };
                 await server.Start();
-                using (var client = new RocketClient(_serverIp, _serverPort, "client", "key"))
+                using (var client = new RocketClient(server.Host, server.Port, "client", "key"))
                 {
                     client.RegisterMethod<int, int>(networkMethodName, x => x.CompareTo(0));
                     await client.Connect();
@@ -127,13 +125,13 @@ namespace NetRocket.Tests
         {
             bool? received = null;
             RocketConnection clientRocketConnectionOnServer = null;
-            using (var server = new RocketServer(_serverIp, _serverPort))
+            using (var server = Utils.CreateServer())
             {
                 server.RegisterCredentials(new Credentials("client", "key"));
                 const string networkMethodName = "doSomething";
                 server.Authorized += (login, connection) => { clientRocketConnectionOnServer = connection; };
                 await server.Start();
-                using (var client = new RocketClient(_serverIp, _serverPort, "client", "key"))
+                using (var client = new RocketClient(server.Host, server.Port, "client", "key"))
                 {
                     client.RegisterMethod(networkMethodName, () => { received = true; });
                     await client.Connect();
