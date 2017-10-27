@@ -47,6 +47,11 @@ namespace NetRocket
         /// </summary>
         public int ConnectionRepeatInterval { get; set; } = 5000;
 
+        /// <summary>
+        /// Количество попыток подключения. Если подключаться нужно бесконечно, значение должно быть 0. Дефолтное значение - 5.
+        /// </summary>
+        public int MaxConnectionAttempts { get; set; } = 5;
+
         public async Task Connect()
         {
             await AsyncConnectInternal(ConnectionState.Connecting);
@@ -60,17 +65,19 @@ namespace NetRocket
         {
             Connection.ConnectionState = intermediateState;
             bool connected = false;
-            const int connectionAttempts = 5;
-            int attemptsRemaining = connectionAttempts;
+            int attemptsRemaining = MaxConnectionAttempts;
             while (!connected)
             {
                 try
                 {
-                    // если подключаемся в первый раз (не реконнект), то у нас только n попыток
-                    attemptsRemaining--;
-                    if (intermediateState == ConnectionState.Connecting && attemptsRemaining == 0)
+                    if (MaxConnectionAttempts != 0)
                     {
-                        throw new ServerUnavailableException(Host, Port, connectionAttempts);
+                        // если подключаемся в первый раз (не реконнект), то у нас только n попыток
+                        attemptsRemaining--;
+                        if (intermediateState == ConnectionState.Connecting && attemptsRemaining == 0)
+                        {
+                            throw new ServerUnavailableException(Host, Port, MaxConnectionAttempts);
+                        }
                     }
                     _socket = new Socket(_socket.AddressFamily, _socket.SocketType, _socket.ProtocolType);
                     Connection.Socket = _socket;
