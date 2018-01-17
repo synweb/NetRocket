@@ -571,8 +571,9 @@ namespace NetRocket
 
         protected async Task SendRequest(Socket socket, RoRequestFrame request, int timeout = 0)
         {
+            var awaitResponseTask = AwaitResponse(request, timeout);
             await SendRequestInternal(socket, request);
-            RoResponseFrame response = await AwaitResponse(request, timeout);
+            RoResponseFrame response = await awaitResponseTask;
         }
 
         /// <summary>
@@ -585,8 +586,9 @@ namespace NetRocket
         /// <returns></returns>
         protected async Task<T> SendRequestAndAwaitResult<T>(Socket socket, RoRequestFrame request, int timeout = 0)
         {
+            var awaitResponseTask = AwaitResponse(request, timeout);
             await SendRequestInternal(socket, request);
-            RoResponseFrame response = await AwaitResponse(request, timeout);
+            RoResponseFrame response = await awaitResponseTask;
             // удаляем из словаря гуид запроса и ответ, возвращаем результат
             var objectRes = response.Result;
             var result = CastIncomingValue<T>(objectRes);
@@ -598,7 +600,7 @@ namespace NetRocket
             // когда в словаре по этому гуиду будет объект, значит, ответ пришёл
             int maxCounter = timeout > 0 ? timeout : ReceiveTimeout;
             int counter = 0;
-            while (_frameResposesAwaitingDictionary[request.Guid] == null)
+            while (!_frameResposesAwaitingDictionary.ContainsKey(request.Guid) || _frameResposesAwaitingDictionary[request.Guid] == null)
             {
                 if (counter > maxCounter)
                 {
