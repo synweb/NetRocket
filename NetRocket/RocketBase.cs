@@ -108,6 +108,7 @@ namespace NetRocket
                 try
                 {
                     int bytesRead = await conn.Socket.ReceiveAsync(headBufferSegment, SocketFlags.None);
+                    Debug.WriteLine($"Got {bytesRead} bytes");
                     if (bytesRead == 0)
                     {
                         connectionShutdown = true;
@@ -130,6 +131,7 @@ namespace NetRocket
                         // неверный формат первого пакета!
                         continue;
                     }
+                    Debug.WriteLine($"Head ok");
                     var longSize = 8;
                     var byteBodyLength = new byte[longSize];
                     var checksumLength = 4;
@@ -137,6 +139,7 @@ namespace NetRocket
                     Buffer.BlockCopy(buffer, 2, byteBodyLength, 0, longSize);
                     Buffer.BlockCopy(buffer, 10, checksum, 0, checksumLength);
                     long bodyLength = BitConverter.ToInt64(byteBodyLength, 0);
+                    Debug.WriteLine($"BodyLength: {bodyLength}");
                     if (bodyLength > MaxMessageLength)
                     {
                         // размер пакет больше предельного
@@ -159,6 +162,8 @@ namespace NetRocket
                             iterationCounter++;
                         }
                         var data = ms.ToArray();
+                        Debug.WriteLine($"Received. Checking sum...");
+                         
                         var dataChecksum = _crc32.ComputeHash(data);
                         var checksumOk = dataChecksum.SequenceEqual(checksum);
                         if (checksumOk)
@@ -167,17 +172,30 @@ namespace NetRocket
                             Task.Factory.StartNew(async () =>
 #pragma warning restore 4014
                             {
+                                Debug.WriteLine($"Checksum ok. Authorizing...");
                                 var authorized = AuthorizeRequest(data, conn);
                                 if (authorized)
                                 {
-                                    var isInboundMethod = ProcessRequest(data, conn, isAuthorized: true);
-                                    var isResponse = ProcessResponse(data, conn);
-                                    if (await isInboundMethod || await isResponse)
+                                    Debug.WriteLine($"Auth ok");
+                                    var isInboundMethod = await ProcessRequest(data, conn, isAuthorized: true);
+                                    var isResponse = await ProcessResponse(data, conn);
+                                    if (isInboundMethod)
+                                    {
+                                        Debug.WriteLine($"It is request");
+                                    }
+                                    if (isResponse)
+                                    {
+                                        Debug.WriteLine($"It is response");
+                                    }
+                                    //if (await isInboundMethod || await isResponse)
+                                    if (isInboundMethod || isResponse)
                                         return;
+
                                     DataReceived(data, conn);
                                 }
                                 else
                                 {
+                                    Debug.WriteLine($"It is auth request");
                                     Task.Run(async () => await ProcessRequest(data, conn, isAuthorized: false));
                                 }
                             });
@@ -191,8 +209,19 @@ namespace NetRocket
                 }
                 catch (SocketException e)
                 {
-                    CloseConnection(conn);
-                    connectionShutdown = true;
+                    Debug.WriteLine(e);
+                    Debug.WriteLine($"SocketErrorCode: {e.SocketErrorCode}");
+                    Debug.WriteLine($"Source: {e.Source}");
+                    if (e.InnerException != null)
+                    {
+                        Debug.WriteLine($"Inner: {e.InnerException}");
+                    }
+                    if (e.SocketErrorCode != SocketError.OperationAborted)
+                    {
+                        CloseConnection(conn);
+                        connectionShutdown = true;
+                        throw;
+                    }
                 }
                 catch (Exception e)
                 {
