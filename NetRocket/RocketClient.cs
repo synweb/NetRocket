@@ -21,7 +21,6 @@ namespace NetRocket
                 Buffer = new byte[_bufferSize],
                 ConnectionId = 0
             };
-            Connection.ConnectionStateChanged += OnConnectionStateChanged;
         }
 
         private async void OnConnectionStateChanged(ConnectionState connectionState)
@@ -83,6 +82,7 @@ namespace NetRocket
                     Connection.Socket = _socket;
                     await _socket.ConnectAsync(_ipEndPoint);
                     connected = _socket.Connected;
+                    Connection.ConnectionStateChanged += OnConnectionStateChanged;
                 }
                 catch (SocketException e)
                 {
@@ -92,9 +92,9 @@ namespace NetRocket
             }
 
 
-#pragma warning disable 4014
+//#pragma warning disable 4014
             ReceiveData(Connection);
-#pragma warning restore 4014
+//#pragma warning restore 4014
             bool authenticated = await Authenticate();
             if (!authenticated)
             {

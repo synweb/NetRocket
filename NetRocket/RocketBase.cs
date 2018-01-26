@@ -76,11 +76,30 @@ namespace NetRocket
             }
         }
 
+        private class Message
+        {
+            public Message()
+            {
+                
+            }
+
+            public Message(Socket socket, byte[] data)
+            {
+                Socket = socket;
+                Data = data;
+            }
+
+            public Socket Socket { get; set; }
+            public byte[] Data { get; set; }
+        }
+
+        private Queue<byte[]> _messageQueue = new Queue<byte[]>();
+        private object _queueLockObject = new object();
+
         private async Task<int> SendMessageInternal(Socket socket, byte[] msg)
         {
             if (!socket.Connected)
                 return 0;
-            
             var checksum = _crc32.ComputeHash(msg);
             var lengthBytes = BitConverter.GetBytes(msg.LongCount());
             using (var ms = new MemoryStream())
@@ -112,6 +131,7 @@ namespace NetRocket
                     if (bytesRead == 0)
                     {
                         connectionShutdown = true;
+                        CloseConnection(conn);
                         break;
                     }
                     if (bytesRead != HEAD_FRAME_LENGTH)
@@ -218,9 +238,8 @@ namespace NetRocket
                     }
                     if (e.SocketErrorCode != SocketError.OperationAborted)
                     {
-                        CloseConnection(conn);
                         connectionShutdown = true;
-                        throw;
+                        CloseConnection(conn);
                     }
                 }
                 catch (Exception e)
@@ -571,9 +590,8 @@ namespace NetRocket
 
         protected async Task SendRequest(Socket socket, RoRequestFrame request, int timeout = 0)
         {
-            var awaitResponseTask = AwaitResponse(request, timeout);
             await SendRequestInternal(socket, request);
-            RoResponseFrame response = await awaitResponseTask;
+            RoResponseFrame response = await AwaitResponse(request, timeout);
         }
 
         /// <summary>
@@ -586,9 +604,8 @@ namespace NetRocket
         /// <returns></returns>
         protected async Task<T> SendRequestAndAwaitResult<T>(Socket socket, RoRequestFrame request, int timeout = 0)
         {
-            var awaitResponseTask = AwaitResponse(request, timeout);
             await SendRequestInternal(socket, request);
-            RoResponseFrame response = await awaitResponseTask;
+            RoResponseFrame response = await AwaitResponse(request, timeout);
             // удаляем из словаря гуид запроса и ответ, возвращаем результат
             var objectRes = response.Result;
             var result = CastIncomingValue<T>(objectRes);
@@ -600,7 +617,7 @@ namespace NetRocket
             // когда в словаре по этому гуиду будет объект, значит, ответ пришёл
             int maxCounter = timeout > 0 ? timeout : ReceiveTimeout;
             int counter = 0;
-            while (!_frameResposesAwaitingDictionary.ContainsKey(request.Guid) || _frameResposesAwaitingDictionary[request.Guid] == null)
+            while (_frameResposesAwaitingDictionary[request.Guid] == null)
             {
                 if (counter > maxCounter)
                 {

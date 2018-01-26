@@ -1,13 +1,17 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.27004.2005
+VisualStudioVersion = 15.0.27130.2010
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NetRocket", "NetRocket\NetRocket.csproj", "{5E7298E2-8FC9-4436-A956-B2EAD6A5D9AE}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NetRocket.Tests", "NetRocket.Tests\NetRocket.Tests.csproj", "{43BCFB13-BB9F-4368-A30B-BFEE4EBC1B3D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetRocket.Demo", "NetRocket.Demo\NetRocket.Demo.csproj", "{7FE62403-6AF6-4B24-B46B-8D701E63EDD3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NetRocket.Demo", "NetRocket.Demo\NetRocket.Demo.csproj", "{7FE62403-6AF6-4B24-B46B-8D701E63EDD3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetRocket.DemoClient", "NetRocket.DemoClient\NetRocket.DemoClient.csproj", "{E7D45833-54E7-4069-A6C0-3E02FA572A7C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetRocket.DemoServer", "NetRocket.DemoServer\NetRocket.DemoServer.csproj", "{20B14858-7A1A-4EE5-9B4B-126A28B6C4BD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -27,6 +31,14 @@ Global
 		{7FE62403-6AF6-4B24-B46B-8D701E63EDD3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7FE62403-6AF6-4B24-B46B-8D701E63EDD3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7FE62403-6AF6-4B24-B46B-8D701E63EDD3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E7D45833-54E7-4069-A6C0-3E02FA572A7C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E7D45833-54E7-4069-A6C0-3E02FA572A7C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E7D45833-54E7-4069-A6C0-3E02FA572A7C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E7D45833-54E7-4069-A6C0-3E02FA572A7C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{20B14858-7A1A-4EE5-9B4B-126A28B6C4BD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{20B14858-7A1A-4EE5-9B4B-126A28B6C4BD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{20B14858-7A1A-4EE5-9B4B-126A28B6C4BD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{20B14858-7A1A-4EE5-9B4B-126A28B6C4BD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
