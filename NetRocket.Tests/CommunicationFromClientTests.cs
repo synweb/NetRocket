@@ -23,7 +23,7 @@ namespace NetRocket.Tests
                     server.RegisterMethod(networkMethodName, () => { });
                     // NOT calling  await server.Start();
                     using (var client =
-                        new RocketClient(server.Host, server.Port, "client", "key") {ConnectionRepeatInterval = 100})
+                        new RocketClient(server.Host, server.Port, "client", "key") {ConnectionRepeatInterval = 100, MaxConnectionAttempts = 2})
                     {
                         await client.Connect();
                         await client.CallServerMethod(networkMethodName);
@@ -35,29 +35,29 @@ namespace NetRocket.Tests
         [Fact]
         public async void ConnectionCountIncreasedServerTest()
         {
-            await Assert.ThrowsAsync<ServerUnavailableException>(async () =>
+            using (var server = Utils.CreateServer())
             {
-                using (var server = Utils.CreateServer())
+                server.RegisterCredentials(new Credentials("client", "key"));
+                Assert.Equal(server.ConnectedClientsCount, 0);
+                await server.Start();
+                using (var client =
+                    new RocketClient(server.Host, server.Port, "client", "key") {ConnectionRepeatInterval = 100})
                 {
-                    server.RegisterCredentials(new Credentials("client", "key"));
-                    Assert.Equal(server.ConnectedClientsCount, 0);
-                    using (var client =
-                        new RocketClient(server.Host, server.Port, "client", "key") { ConnectionRepeatInterval = 100 })
-                    {
-                        await client.Connect();
-                        Assert.Equal(server.ConnectedClientsCount, 1);
+                    await client.Connect();
+                    Assert.Equal(server.ConnectedClientsCount, 1);
 
-                        using (var client2 =
-                            new RocketClient(server.Host, server.Port, "client", "key") {ConnectionRepeatInterval = 100})
-                        {
-                            await client2.Connect();
-                            Assert.Equal(server.ConnectedClientsCount, 2);
-                        }
-                        Assert.Equal(server.ConnectedClientsCount, 1);
+                    using (var client2 =
+                        new RocketClient(server.Host, server.Port, "client", "key") {ConnectionRepeatInterval = 100})
+                    {
+                        await client2.Connect();
+                        Assert.Equal(server.ConnectedClientsCount, 2);
                     }
-                    Assert.Equal(server.ConnectedClientsCount, 0);
+                    await Task.Delay(1000);
+                    Assert.Equal(server.ConnectedClientsCount, 1);
                 }
-            });
+                await Task.Delay(1000);
+                Assert.Equal(server.ConnectedClientsCount, 0);
+            }
         }
 
         [Fact]
@@ -96,7 +96,6 @@ namespace NetRocket.Tests
         [Fact]
         public async void ParameterizedMethodCallWithResultTest()
         {
-            int serverPort = Utils.GetFreePort();
             using (var server = Utils.CreateServer())
             {
                 server.RegisterCredentials(new Credentials("client", "key"));

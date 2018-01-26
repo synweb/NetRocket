@@ -28,9 +28,17 @@ namespace NetRocket
             switch (connectionState)
             {
                 case ConnectionState.NotConnected:
+                case ConnectionState.Dropped:
                     if (_autoReconnect)
                     {
-                        await Reconnect();
+                        try
+                        {
+                            await Reconnect();
+                        }
+                        catch (Exception e)
+                        {
+                            Debug.WriteLine(e);
+                        }
                     }
                     break;
             }
@@ -47,9 +55,9 @@ namespace NetRocket
         public int ConnectionRepeatInterval { get; set; } = 5000;
 
         /// <summary>
-        /// Количество попыток подключения. Если подключаться нужно бесконечно, значение должно быть 0. Дефолтное значение - 5.
+        /// Количество попыток подключения. Если подключаться нужно бесконечно, значение должно быть 0. Дефолтное значение - 0.
         /// </summary>
-        public int MaxConnectionAttempts { get; set; } = 5;
+        public int MaxConnectionAttempts { get; set; } = 0;
 
         public async Task Connect()
         {
@@ -82,9 +90,12 @@ namespace NetRocket
                     Connection.Socket = _socket;
                     await _socket.ConnectAsync(_ipEndPoint);
                     connected = _socket.Connected;
-                    Connection.ConnectionStateChanged += OnConnectionStateChanged;
                 }
-                catch (SocketException e)
+                catch (ServerUnavailableException)
+                {
+                    throw;
+                }
+                catch (Exception e)
                 {
                     Debug.WriteLine(e);
                     await Task.Delay(ConnectionRepeatInterval);
@@ -103,12 +114,22 @@ namespace NetRocket
             }
             Connection.ConnectionState = ConnectionState.Connected;
 
-
+            if (!_connectionStateChangedEventSubscribed)
+            {
+                Connection.ConnectionStateChanged += OnConnectionStateChanged;
+                _connectionStateChangedEventSubscribed = true;
+            }
         }
+
+        /// <summary>
+        /// Говорит о том, подписано ли событие изменения состояния соединения на соответствующий метод.
+        /// Нужно для того, чтобы оно не подписывалось много ряд подряд при переподключении.
+        /// </summary>
+        private bool _connectionStateChangedEventSubscribed = false;
 
         private async Task<bool> Authenticate()
         {
-            bool authenticated = await SendRequestAndAwaitResult<bool>(_socket, new RoAuthRequestFrame(new Credentials(_login, _key)));
+            bool authenticated = await SendRequestAndAwaitResult<bool>(Connection, new RoAuthRequestFrame(new Credentials(_login, _key)));
             if (!authenticated)
             {
                 CloseConnection(Connection);
@@ -124,14 +145,14 @@ namespace NetRocket
             });
         }
 
-        public async Task SendMessage(string msg)
+        public void SendMessage(string msg)
         {
-            await SendMessageInternal(_socket, new RoSimpleFrame(msg));
+            EnqueueMessage(Connection, new RoSimpleFrame(msg));
         }
 
-        public async Task SendMessage(byte[] msg)
+        public void SendMessage(byte[] msg)
         {
-            await SendMessageInternal(_socket, new RoSimpleFrame(msg));
+            EnqueueMessage(Connection, new RoSimpleFrame(msg));
         }
 
         protected override bool AuthorizeRequest(byte[] data, RocketConnection conn)
@@ -162,7 +183,7 @@ namespace NetRocket
         /// <returns></returns>
         public async Task CallServerMethod(string methodName, object param = null)
         {
-            await SendRequest(_socket, new RoRequestFrame(methodName, param));
+            await SendRequest(Connection, new RoRequestFrame(methodName, param));
         }
 
         /// <summary>
@@ -175,11 +196,12 @@ namespace NetRocket
         public async Task<T> CallServerMethod<T>(string methodName, object param = null)
         {
             var requestFrame = new RoRequestFrame(methodName, param);
-            return await SendRequestAndAwaitResult<T>(_socket, requestFrame);
+            return await SendRequestAndAwaitResult<T>(Connection, requestFrame);
         }
 
         public override async void Dispose()
         {
+            Connection.ConnectionStateChanged -= OnConnectionStateChanged;
             await Disconnect();
             base.Dispose();
         }

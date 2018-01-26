@@ -28,7 +28,14 @@ namespace NetRocket.DemoClient
                     while (!"q".Equals(input))
                     {
                         input = Console.ReadLine();
-                        await client.CallServerMethod(networkMethodName, input);
+                        try
+                        {
+                            await client.CallServerMethod(networkMethodName, input);
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine(e);
+                        }
                     }
                 }
                 catch (Exception e)

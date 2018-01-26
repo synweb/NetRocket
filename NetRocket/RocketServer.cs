@@ -98,14 +98,14 @@ namespace NetRocket
             }
         }
 
-        public async Task SendMessage(byte[] msg, RocketConnection con)
+        public void SendMessage(byte[] msg, RocketConnection con)
         {
-            await SendMessageInternal(con.Socket, new RoSimpleFrame(msg));
+            EnqueueMessage(con, new RoSimpleFrame(msg));
         }
 
-        public async Task SendMessage(string msg, RocketConnection con)
+        public void SendMessage(string msg, RocketConnection con)
         {
-            await SendMessageInternal(con.Socket, new RoSimpleFrame(msg));
+            EnqueueMessage(con, new RoSimpleFrame(msg));
         }
 
         //public async Task SendToAll(byte[] bytes)
@@ -168,17 +168,17 @@ namespace NetRocket
 
         public async Task CallClientMethod(string methodName, RocketConnection clientRocketConnection)
         {
-            await SendRequest(clientRocketConnection.Socket, new RoRequestFrame(methodName, null));
+            await SendRequest(clientRocketConnection, new RoRequestFrame(methodName, null));
         }
 
         public async Task CallClientMethod(string methodName, object param, RocketConnection clientRocketConnection)
         {
-            await SendRequest(clientRocketConnection.Socket, new RoRequestFrame(methodName, param));
+            await SendRequest(clientRocketConnection, new RoRequestFrame(methodName, param));
         }
 
         public async Task<T> CallClientMethod<T>(string methodName, object param, RocketConnection clientRocketConnection)
         {
-            return await SendRequestAndAwaitResult<T>(clientRocketConnection.Socket, new RoRequestFrame(methodName, param));
+            return await SendRequestAndAwaitResult<T>(clientRocketConnection, new RoRequestFrame(methodName, param));
         }
 
         #endregion

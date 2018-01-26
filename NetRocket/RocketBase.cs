@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -9,6 +10,7 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using NetRocket.Connections;
 using NetRocket.Cryptography;
@@ -56,67 +58,114 @@ namespace NetRocket
                 SendTimeout = ReceiveTimeout,
                 NoDelay = true
             };
+            Task.Factory.StartNew(QueueProcessingLoop);
         }
 
-        protected async Task<int> SendMessageInternal(Socket socket, RoFrame frame)
+        protected void EnqueueMessage(RocketConnection connection, RoFrame frame)
         {
             try
             {
-                if (!socket.Connected)
-                    return 0;
                 var json = JsonConvert.SerializeObject(frame);
                 var bytes = Encoding.UTF8.GetBytes(json);
-                int bytesSent = await SendMessageInternal(socket, bytes);
-                return bytesSent;
+                EnqueueMessage(connection, bytes);
             }
             catch (Exception e)
             {
                 Debug.WriteLine(e);
-                return 0;
             }
         }
 
-        private class Message
+        private class RocketMessage
         {
-            public Message()
+            public RocketMessage(RocketConnection connection, byte[] data)
+            {
+                Connection = connection;
+                Data = data;
+            }
+
+            public RocketMessage()
             {
                 
             }
 
-            public Message(Socket socket, byte[] data)
-            {
-                Socket = socket;
-                Data = data;
-            }
-
-            public Socket Socket { get; set; }
+            public RocketConnection Connection { get; set; }
             public byte[] Data { get; set; }
         }
 
-        private Queue<byte[]> _messageQueue = new Queue<byte[]>();
+        private ConcurrentQueue<RocketMessage> _messageQueue = new ConcurrentQueue<RocketMessage>();
         private object _queueLockObject = new object();
+        private ManualResetEvent _queueMre;
 
-        private async Task<int> SendMessageInternal(Socket socket, byte[] msg)
+        private void EnqueueMessage(RocketConnection connection, byte[] msg)
         {
-            if (!socket.Connected)
-                return 0;
             var checksum = _crc32.ComputeHash(msg);
             var lengthBytes = BitConverter.GetBytes(msg.LongCount());
             using (var ms = new MemoryStream())
             {
+                // сначала отправляем длину сообщения и контрольную сумму
                 ms.WriteByte(HEAD0);
                 ms.WriteByte(HEAD1);
                 ms.Write(lengthBytes, 0, lengthBytes.Length);
                 ms.Write(checksum, 0, checksum.Length);
                 ms.WriteByte(HEAD14);
                 ms.WriteByte(HEAD15);
-                // сначала отправляем длину сообщения и контрольную сумму
-                socket.Send(ms.ToArray());
+                // затем - само сообщение
+                ms.Write(msg, 0, msg.Length);
+                _messageQueue.Enqueue(new RocketMessage(connection, ms.ToArray()));
             }
-            // Затем - само сообщение
-            int bytesSent = await socket.SendAsync(new ArraySegment<byte>(msg), SocketFlags.Partial);
-            return bytesSent;
         }
+
+        private void QueueProcessingLoop()
+        {
+            _queueMre = new ManualResetEvent(false);
+            while (!_queueMre.WaitOne(2))
+            {
+                while (!_messageQueue.IsEmpty)
+                {
+                    try
+                    {
+                        RocketMessage msg;
+                        lock (_queueLockObject)
+                        {
+                            bool dequeued = _messageQueue.TryPeek(out msg);
+                            if (!dequeued || msg == null)
+                                break;
+                            if (!msg.Connection.Socket.Connected)
+                                break;
+                            int bytesSent = msg.Connection.Socket.Send(msg.Data, SocketFlags.Partial);
+                            _messageQueue.TryDequeue(out var msg2);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.WriteLine(e);
+                    }
+                }
+            }
+        }
+
+        //private async Task<int> SendMessageInternal(Socket socket, byte[] msg)
+        //{
+        //    if (!socket.Connected)
+        //        return 0;
+
+        //    var checksum = _crc32.ComputeHash(msg);
+        //    var lengthBytes = BitConverter.GetBytes(msg.LongCount());
+        //    using (var ms = new MemoryStream())
+        //    {
+        //        ms.WriteByte(HEAD0);
+        //        ms.WriteByte(HEAD1);
+        //        ms.Write(lengthBytes, 0, lengthBytes.Length);
+        //        ms.Write(checksum, 0, checksum.Length);
+        //        ms.WriteByte(HEAD14);
+        //        ms.WriteByte(HEAD15);
+        //        // сначала отправляем длину сообщения и контрольную сумму
+        //        socket.Send(ms.ToArray());
+        //    }
+        //    // Затем - само сообщение
+        //    int bytesSent = await socket.SendAsync(new ArraySegment<byte>(msg), SocketFlags.Partial);
+        //    return bytesSent;
+        //}
 
         protected async void ReceiveData(RocketConnection conn)
         {
@@ -469,8 +518,7 @@ namespace NetRocket
                         // метод не зареген
                         Task.Factory.StartNew(async () =>
                         {
-                            await SendResponse(conn.Socket,
-                                new RoResponseFrame(request.Guid, ResponseStatusCode.InexistMethod));
+                            SendResponse(conn, new RoResponseFrame(request.Guid, ResponseStatusCode.InexistMethod));
                         });
                         return false;
                     }
@@ -491,7 +539,7 @@ namespace NetRocket
 #pragma warning disable 4014
                         Task.Factory.StartNew(async () =>
                         {
-                            await SendResponse(conn.Socket,
+                            SendResponse(conn,
                                 new RoResponseFrame(request.Guid, null, ResponseStatusCode.Ok));
                         });
 #pragma warning restore 4014
@@ -504,7 +552,7 @@ namespace NetRocket
 #pragma warning disable 4014
                         Task.Factory.StartNew(async () =>
                         {
-                            await SendResponse(conn.Socket,
+                            SendResponse(conn,
                                 new RoResponseFrame(request.Guid, responseResult, ResponseStatusCode.Ok));
                         });
 #pragma warning restore 4014
@@ -521,12 +569,12 @@ namespace NetRocket
                     if (authorized)
                     {
 #pragma warning disable 4014
-                        Task.Run(async () => await SendResponse(conn.Socket, new RoResponseFrame(request.Guid, true, ResponseStatusCode.Ok)));
+                        Task.Run(async () => SendResponse(conn, new RoResponseFrame(request.Guid, true, ResponseStatusCode.Ok)));
 #pragma warning restore 4014
                     }
                     else
                     {
-                        await SendResponse(conn.Socket, new RoResponseFrame(request.Guid, false, ResponseStatusCode.Unauthorized));
+                        SendResponse(conn, new RoResponseFrame(request.Guid, false, ResponseStatusCode.Unauthorized));
                         CloseConnection(conn);
                     }
                 }
@@ -576,22 +624,20 @@ namespace NetRocket
         /// <summary>
         /// Отослать ответ на запрос
         /// </summary>
-        /// <param name="socket">Удалённый сокет</param>
-        /// <param name="request">Пакет запроса</param>
+        /// <param name="connection">Удалённый сокет</param>
+        /// <param name="response">Пакет ответа</param>
         /// <returns></returns>
-        protected async Task SendResponse(Socket socket, RoResponseFrame response)
+        protected void SendResponse(RocketConnection connection, RoResponseFrame response)
         {
-            if (!socket.Connected)
-                throw new NotConnectedException();
             var json = JsonConvert.SerializeObject(response);
             var bytes = Encoding.UTF8.GetBytes($"response:{json}");
-            await SendMessageInternal(socket, bytes);
+            EnqueueMessage(connection, bytes);
         }
 
-        protected async Task SendRequest(Socket socket, RoRequestFrame request, int timeout = 0)
+        protected async Task SendRequest(RocketConnection connection, RoRequestFrame request, int timeout = 0)
         {
-            await SendRequestInternal(socket, request);
-            RoResponseFrame response = await AwaitResponse(request, timeout);
+            SendRequestInternal(connection, request);
+            RoResponseFrame response = await AwaitResponse(connection, request, timeout);
         }
 
         /// <summary>
@@ -602,31 +648,44 @@ namespace NetRocket
         /// <param name="request">Пакет запроса</param>
         /// <param name="timeout">Таймаут. Если передан 0, то будет установлен равным ReceiveTimeout</param>
         /// <returns></returns>
-        protected async Task<T> SendRequestAndAwaitResult<T>(Socket socket, RoRequestFrame request, int timeout = 0)
+        protected async Task<T> SendRequestAndAwaitResult<T>(RocketConnection connection, RoRequestFrame request, int timeout = 0)
         {
-            await SendRequestInternal(socket, request);
-            RoResponseFrame response = await AwaitResponse(request, timeout);
+            SendRequestInternal(connection, request);
+            RoResponseFrame response = await AwaitResponse(connection, request, timeout);
             // удаляем из словаря гуид запроса и ответ, возвращаем результат
             var objectRes = response.Result;
             var result = CastIncomingValue<T>(objectRes);
             return result;
         }
 
-        private async Task<RoResponseFrame> AwaitResponse(RoRequestFrame request, int timeout)
+        private async Task<RoResponseFrame> AwaitResponse(RocketConnection connection, RoRequestFrame request, int timeout)
         {
             // когда в словаре по этому гуиду будет объект, значит, ответ пришёл
-            int maxCounter = timeout > 0 ? timeout : ReceiveTimeout;
-            int counter = 0;
-            while (_frameResposesAwaitingDictionary[request.Guid] == null)
+            //int maxCounter = timeout > 0 ? timeout : ReceiveTimeout;
+            //int counter = 0;
+            var requestStartTime = DateTime.Now;
+
+            while (!_frameResposesAwaitingDictionary.ContainsKey(request.Guid) || _frameResposesAwaitingDictionary[request.Guid] == null)
             {
-                if (counter > maxCounter)
+                if (requestStartTime.AddMilliseconds(timeout > 0 ? timeout : ReceiveTimeout) < DateTime.Now)
                 {
                     _frameResposesAwaitingDictionary.Remove(request.Guid);
-                    throw new RequestTimeoutException(request.Guid);
+                    //throw new RequestTimeoutException(request.Guid);
+                    // кладём запрос обратно в очередь, так как ответа не последовало
+                    if (this is RocketServer)
+                    {
+                        // если мы сервер, и клиент от нас отключился, то долбиться к нему не стремимся
+                        break;
+                    }
+                    else
+                    {
+                        // если мы клиент, то продолжаем долбиться до сервера
+                        //EnqueueMessage(connection, request);
+                        SendRequestInternal(connection, request);
+                    }
                 }
                 int delay = 2;
                 await Task.Delay(delay);
-                counter += delay;
             }
             var response = _frameResposesAwaitingDictionary[request.Guid];
             _frameResposesAwaitingDictionary.Remove(request.Guid);
@@ -640,22 +699,22 @@ namespace NetRocket
             return response;
         }
 
-        private async Task SendRequestInternal(Socket socket, RoRequestFrame request)
+        private void SendRequestInternal(RocketConnection connection, RoRequestFrame request)
         {
-            if (!socket.Connected)
-                throw new NotConnectedException();
             var json = JsonConvert.SerializeObject(request);
             var bytes = Encoding.UTF8.GetBytes($"request:{json}");
             // кладём в словарь гуид запроса, на который нам нужен ответ
             _frameResposesAwaitingDictionary.Add(request.Guid, null);
-            await SendMessageInternal(socket, bytes);
+            EnqueueMessage(connection, bytes);
         }
         #endregion
 
         public virtual void Dispose()
         {
+            _queueMre?.Set();
             _crc32?.Dispose();
             _socket?.Dispose();
+            
         }
     }
 }
